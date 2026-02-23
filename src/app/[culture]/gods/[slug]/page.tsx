@@ -88,11 +88,13 @@ export default async function GodPage({ params }: GodPageProps) {
   // Сначала получаем ID сущности по slug
   let entityId: number | null = null;
   try {
-    const response = await fetch(`${API_BASE_URL}/items/entities?filter[slug][_eq]=${slug}&fields=id`);
+    // Загружаем все сущности и фильтруем по slug
+    const response = await fetch(`${API_BASE_URL}/items/entities?fields=id,slug`);
     if (response.ok) {
       const data = await response.json();
-      if (data.data && data.data.length > 0) {
-        entityId = data.data[0].id;
+      const entity = data.data?.find((e: any) => e.slug === slug);
+      if (entity) {
+        entityId = entity.id;
       }
     }
   } catch (error) {
