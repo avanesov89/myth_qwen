@@ -7,7 +7,7 @@ interface CulturePageProps {
 
 export async function generateMetadata({ params }: CulturePageProps): Promise<Metadata> {
   const { culture: cultureSlug } = await params;
-  
+
   try {
     const culture = await getCultureBySlug(cultureSlug);
     return {
@@ -25,4 +25,10 @@ export async function generateMetadata({ params }: CulturePageProps): Promise<Me
   }
 }
 
-export { default } from "./page";
+export default function CultureLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <>{children}</>;
+}
