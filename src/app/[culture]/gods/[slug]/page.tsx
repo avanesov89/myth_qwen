@@ -28,6 +28,25 @@ export async function generateStaticParams() {
   return allGods;
 }
 
+// Загрузка связанных сущностей по ID
+async function loadRelatedEntities(ids: number[]): Promise<Entity[]> {
+  if (!ids || ids.length === 0) return [];
+  
+  const entities: Entity[] = [];
+  for (const id of ids) {
+    try {
+      const response = await fetch(`http://localhost:8055/items/entities/${id}`);
+      if (response.ok) {
+        const data = await response.json();
+        entities.push(data.data);
+      }
+    } catch (error) {
+      console.error(`Failed to load entity ${id}:`, error);
+    }
+  }
+  return entities;
+}
+
 // Страница рендерится динамически
 export const dynamic = "force-dynamic";
 
@@ -46,11 +65,17 @@ export default async function GodPage({ params }: GodPageProps) {
   let god: Entity;
   try {
     god = await getEntityBySlug(slug);
-    console.log("Loaded entity:", god);
+    console.log("Loaded entity:", JSON.stringify(god, null, 2));
   } catch (error) {
     console.error("Entity not found:", slug);
     notFound();
   }
+
+  // Загружаем родителей и браки
+  const [parents, marriages] = await Promise.all([
+    loadRelatedEntities(god.parents || []),
+    loadRelatedEntities(god.marriages || []),
+  ]);
 
   return (
     <main className="container mx-auto px-4 py-8">
@@ -75,29 +100,75 @@ export default async function GodPage({ params }: GodPageProps) {
           </div>
         )}
 
-        {god.belonging && (
-          <div className="mb-4">
-            <strong>Принадлежность:</strong> {god.belonging}
-          </div>
-        )}
+        <dl className="space-y-4">
+          {god.belonging && (
+            <div>
+              <dt className="font-semibold">Принадлежность:</dt>
+              <dd>{god.belonging}</dd>
+            </div>
+          )}
 
-        {god.gender && (
-          <div className="mb-4">
-            <strong>Пол:</strong> {god.gender === 'male' ? 'Мужской' : 'Женский'}
-          </div>
-        )}
+          {god.gender && (
+            <div>
+              <dt className="font-semibold">Пол:</dt>
+              <dd>{god.gender === 'male' ? 'Мужской' : god.gender === 'female' ? 'Женский' : god.gender}</dd>
+            </div>
+          )}
 
-        {god.transcript && (
-          <div className="mb-4">
-            <strong>Транскрипция:</strong> {god.transcript}
-          </div>
-        )}
+          {god.transcript && (
+            <div>
+              <dt className="font-semibold">Транскрипция:</dt>
+              <dd>{god.transcript}</dd>
+            </div>
+          )}
 
-        {god.first_mention && (
-          <div className="mb-4">
-            <strong>Первое упоминание:</strong> {god.first_mention}
-          </div>
-        )}
+          {god.first_mention && (
+            <div>
+              <dt className="font-semibold">Первое упоминание:</dt>
+              <dd>{god.first_mention}</dd>
+            </div>
+          )}
+
+          {parents.length > 0 && (
+            <div>
+              <dt className="font-semibold">Родители:</dt>
+              <dd>
+                <ul className="list-disc list-inside">
+                  {parents.map((parent) => (
+                    <li key={parent.id}>
+                      <Link
+                        href={`/${cultureSlug}/gods/${parent.slug}`}
+                        className="text-blue-600 hover:underline"
+                      >
+                        {parent.title}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </dd>
+            </div>
+          )}
+
+          {marriages.length > 0 && (
+            <div>
+              <dt className="font-semibold">Брачные союзы:</dt>
+              <dd>
+                <ul className="list-disc list-inside">
+                  {marriages.map((spouse) => (
+                    <li key={spouse.id}>
+                      <Link
+                        href={`/${cultureSlug}/gods/${spouse.slug}`}
+                        className="text-blue-600 hover:underline"
+                      >
+                        {spouse.title}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </dd>
+            </div>
+          )}
+        </dl>
       </article>
     </main>
   );
