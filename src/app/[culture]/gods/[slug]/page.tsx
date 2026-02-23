@@ -30,7 +30,7 @@ export async function generateStaticParams() {
   return allGods;
 }
 
-// Загрузка связанных сущностей по ID
+// Загрузка связанных сущностей по ID (для parents/marriages)
 async function loadRelatedEntities(ids: number[]): Promise<Entity[]> {
   if (!ids || ids.length === 0) return [];
   
@@ -64,27 +64,41 @@ export default async function GodPage({ params }: GodPageProps) {
     notFound();
   }
 
-  let god: Entity;
+  // Загружаем сущность с relations
+  let god: any;
   try {
-    god = await getEntityBySlug(slug);
+    const response = await fetch(`${API_BASE_URL}/items/entities/${slug}?filter[slug][_eq]=${slug}&fields=*,gallery.*,parents.*,marriages.*`);
+    if (!response.ok) {
+      notFound();
+    }
+    const data = await response.json();
+    if (!data.data || data.data.length === 0) {
+      notFound();
+    }
+    god = data.data[0];
   } catch (error) {
     console.error("Entity not found:", slug);
     notFound();
   }
 
+  // Извлекаем ID родителей и браков из relations
+  const parentIds = god.parents?.map((p: any) => p.related_entities_id).filter(Boolean) || [];
+  const marriageIds = god.marriages?.map((m: any) => m.related_entities_id).filter(Boolean) || [];
+
   // Загружаем родителей и браки
   const [parents, marriages] = await Promise.all([
-    loadRelatedEntities(god.parents || []),
-    loadRelatedEntities(god.marriages || []),
+    loadRelatedEntities(parentIds),
+    loadRelatedEntities(marriageIds),
   ]);
 
-  // URL изображения
+  // URL изображения (main_image может быть UUID или ID)
   const mainImageUrl = god.main_image 
     ? `${API_BASE_URL}/assets/${god.main_image}` 
     : null;
 
-  // Галерея
-  const galleryImages = god.gallery?.map((id) => `${API_BASE_URL}/assets/${id}`) || [];
+  // Галерея - извлекаем directus_files_id из relations
+  const galleryFileIds = god.gallery?.map((g: any) => g.directus_files_id).filter(Boolean) || [];
+  const galleryImages = galleryFileIds.map((id: string) => `${API_BASE_URL}/assets/${id}`);
 
   return (
     <main className="container mx-auto px-4 py-8">
@@ -195,7 +209,7 @@ export default async function GodPage({ params }: GodPageProps) {
           <section className="mt-8">
             <h2 className="text-2xl font-semibold mb-4">Галерея</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {galleryImages.map((imgUrl, index) => (
+              {galleryImages.map((imgUrl: string, index: number) => (
                 <img
                   key={index}
                   src={imgUrl}
