@@ -64,18 +64,35 @@ export default async function GodPage({ params }: GodPageProps) {
     notFound();
   }
 
-  // Загружаем сущность с relations
+  // Сначала получаем ID сущности по slug
+  let entityId: number | null = null;
+  try {
+    const response = await fetch(`${API_BASE_URL}/items/entities?filter[slug][_eq]=${slug}&fields=id`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.data && data.data.length > 0) {
+        entityId = data.data[0].id;
+      }
+    }
+  } catch (error) {
+    console.error("Failed to get entity ID:", slug);
+  }
+
+  // Загружаем сущность с relations по ID
   let god: any;
   try {
-    const response = await fetch(`${API_BASE_URL}/items/entities/${slug}?filter[slug][_eq]=${slug}&fields=*,gallery.*,parents.*,marriages.*`);
+    if (!entityId) {
+      notFound();
+    }
+    const response = await fetch(`${API_BASE_URL}/items/entities/${entityId}?fields=*,gallery.*,parents.*,marriages.*`);
     if (!response.ok) {
       notFound();
     }
     const data = await response.json();
-    if (!data.data || data.data.length === 0) {
+    if (!data.data) {
       notFound();
     }
-    god = data.data[0];
+    god = data.data;
   } catch (error) {
     console.error("Entity not found:", slug);
     notFound();
