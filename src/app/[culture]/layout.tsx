@@ -13,6 +13,10 @@ export async function generateMetadata({ params }: CulturePageProps): Promise<Me
     return {
       title: `${culture.title} — Мифологический портал`,
       description: culture.description?.replace(/<[^>]*>/g, '').slice(0, 160),
+      openGraph: {
+        title: `${culture.title} — Мифологический портал`,
+        description: culture.description?.replace(/<[^>]*>/g, '').slice(0, 160),
+      },
     };
   } catch (error) {
     return {
