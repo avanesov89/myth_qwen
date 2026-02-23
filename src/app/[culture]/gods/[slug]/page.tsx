@@ -33,12 +33,17 @@ export async function generateStaticParams() {
 // Загрузка мифов, где участвует бог
 async function loadMythsByGodId(godId: number): Promise<any[]> {
   try {
+    // Загружаем все мифы с полями gods
     const response = await fetch(
-      `${API_BASE_URL}/items/myths_and_legends?filter[gods][_contains]=${godId}&fields=id,title,slug,prev_text`
+      `${API_BASE_URL}/items/myths_and_legends?fields=id,title,slug,prev_text,culture,gods`
     );
     if (response.ok) {
       const data = await response.json();
-      return data.data || [];
+      const allMyths = data.data || [];
+      // Фильтруем мифы, где gods содержит godId
+      return allMyths.filter((myth: any) => 
+        Array.isArray(myth.gods) && myth.gods.includes(godId)
+      );
     }
   } catch (error) {
     console.warn(`Failed to load myths for god ${godId}:`, error);
