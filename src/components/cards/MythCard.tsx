@@ -1,12 +1,38 @@
+/**
+ * Карточка мифа
+ * 
+ * Отображает превью мифа с ссылкой на страницу.
+ * Используется на страницах разделов мифов и на страницах богов.
+ * 
+ * @example
+ * ```tsx
+ * <MythCard 
+ *   myth={{ 
+ *     id: 1, 
+ *     slug: 'persefone_sale', 
+ *     title: 'Похищение Персефоны',
+ *     prev_text: 'Краткое описание...'
+ *   }}
+ *   cultureSlug="greek"
+ * />
+ * ```
+ */
+
 import Link from "next/link";
 
 interface MythCardProps {
+  /** Объект мифа для отображения */
   myth: {
+    /** Уникальный ID мифа */
     id: number;
+    /** URL-слаг для роутинга */
     slug: string;
+    /** Название мифа */
     title: string;
+    /** Краткое описание/превью */
     prev_text?: string;
   };
+  /** Slug культуры (например, "greek") */
   cultureSlug: string;
 }
 

@@ -1,13 +1,43 @@
+/**
+ * Страница культуры/мифологии
+ * 
+ * Отображает информацию о выбранной культуре с навигацией по разделам:
+ * - Боги
+ * - Герои
+ * - Мифы
+ * - Существa
+ * 
+ * URL: /{culture}
+ * Примеры: /greek, /egypt, /norse
+ * 
+ * @feature
+ * - Динамический роутинг по slug культуры
+ * - SSR для SEO
+ * - Генерация статических путей для известных культур
+ * - Проверка существования культуры (404 если не найдена)
+ * 
+ * @see https://nextjs.org/docs/app/building-your-application/routing/dynamic-routes
+ */
+
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCultureBySlug, getCultures } from "@/lib/api/cultures";
 import { getGods, getHeroes, getMyths, getCreatures } from "@/lib/api";
 import type { Culture } from "@/types";
 
+/** Параметры страницы с культурой */
 interface CulturePageProps {
   params: Promise<{ culture: string }>;
 }
 
+/**
+ * Генерирует статические пути для SSG
+ * 
+ * Next.js предварительно рендерит эти страницы при билде.
+ * Остальные культуры будут рендериться по запросу (SSR).
+ * 
+ * @returns Массив путей для предварительной генерации
+ */
 export async function generateStaticParams() {
   try {
     const cultures = await getCultures();
@@ -19,9 +49,20 @@ export async function generateStaticParams() {
   }
 }
 
+/**
+ * Главный компонент страницы культуры
+ * 
+ * Загружает:
+ * - Информацию о культуре
+ * - Списки богов, героев, мифов, существ для превью
+ * 
+ * @param params — Параметры маршрута (slug культуры)
+ * @returns JSX страницы культуры
+ */
 export default async function CulturePage({ params }: CulturePageProps) {
   const { culture: cultureSlug } = await params;
   
+  // Проверяем существование культуры
   let culture: Culture;
   try {
     culture = await getCultureBySlug(cultureSlug);
@@ -29,6 +70,7 @@ export default async function CulturePage({ params }: CulturePageProps) {
     notFound();
   }
 
+  // Загружаем превью всех разделов параллельно
   const [gods, heroes, myths, creatures] = await Promise.all([
     getGods(cultureSlug).catch(() => []),
     getHeroes(cultureSlug).catch(() => []),
@@ -38,11 +80,13 @@ export default async function CulturePage({ params }: CulturePageProps) {
 
   return (
     <main className="container mx-auto px-4 py-8">
+      {/* Заголовок и описание культуры */}
       <h1 className="text-4xl font-bold mb-4">{culture.title}</h1>
       <p className="text-gray-600 mb-8">
         {culture.description?.replace(/<[^>]*>/g, '')}
       </p>
 
+      {/* Навигация по разделам */}
       <nav className="mb-8">
         <ul className="flex flex-wrap gap-4">
           <li>
@@ -80,7 +124,9 @@ export default async function CulturePage({ params }: CulturePageProps) {
         </ul>
       </nav>
 
+      {/* Превью разделов */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Превью богов */}
         {gods.length > 0 && (
           <section>
             <h2 className="text-2xl font-semibold mb-4">Боги</h2>
@@ -99,6 +145,7 @@ export default async function CulturePage({ params }: CulturePageProps) {
           </section>
         )}
 
+        {/* Превью мифов */}
         {myths.length > 0 && (
           <section>
             <h2 className="text-2xl font-semibold mb-4">Мифы</h2>

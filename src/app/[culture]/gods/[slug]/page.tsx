@@ -1,16 +1,48 @@
+/**
+ * Страница бога
+ * 
+ * Отображает подробную информацию о божестве:
+ * - Имя и описание
+ * - Основное изображение
+ * - Галерея
+ * - Характеристики (пол, принадлежность, транскрипция)
+ * - Родители и брачные союзы (с ссылками)
+ * - Мифы с участием этого бога
+ * 
+ * URL: /{culture}/gods/{slug}
+ * Примеры: /greek/gods/zevs, /greek/gods/aid
+ * 
+ * @feature
+ * - Динамический роутинг по slug
+ * - Загрузка M2M связей (родители, браки, мифы)
+ * - Загрузка изображений из Directus Files
+ * - SSR для актуальных данных
+ * 
+ * @see https://nextjs.org/docs/app/building-your-application/routing/dynamic-routes
+ */
+
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCultureBySlug } from "@/lib/api/cultures";
-import { getEntityBySlug, getGods } from "@/lib/api/entities";
+import { getGods } from "@/lib/api/entities";
 import type { Entity } from "@/types";
 
+/** Параметры страницы бога */
 interface GodPageProps {
   params: Promise<{ culture: string; slug: string }>;
 }
 
+/** Базовый URL API Directus */
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8055';
 
-// Генерируем пути на основе данных из API
+/**
+ * Генерирует статические пути для SSG
+ * 
+ * Загружает всех богов из известных культур и создаёт
+ * пути для предварительной генерации.
+ * 
+ * @returns Массив путей вида {culture: 'greek', slug: 'zevs'}
+ */
 export async function generateStaticParams() {
   const cultures = ["greek", "egypt", "scandinavian"];
   const allGods: Array<{ culture: string; slug: string }> = [];
@@ -30,7 +62,15 @@ export async function generateStaticParams() {
   return allGods;
 }
 
-// Загрузка мифов, где участвует бог
+/**
+ * Загружает мифы, где участвует указанный бог
+ * 
+ * M2M связь: myths_and_legends.gods — массив объектов
+ * с полем entities_id. Фильтруем мифы по этому полю.
+ * 
+ * @param godId — ID бога в коллекции entities
+ * @returns Массив мифов с этим богом
+ */
 async function loadMythsByGodId(godId: number): Promise<any[]> {
   try {
     // Загружаем все мифы с полями gods (M2M relation)
@@ -55,7 +95,12 @@ async function loadMythsByGodId(godId: number): Promise<any[]> {
   return [];
 }
 
-// Загрузка связанных сущностей по ID (для parents/marriages)
+/**
+ * Загружает связанные сущности по ID (для родителей и браков)
+ * 
+ * @param ids — Массив ID сущностей
+ * @returns Массив объектов сущностей
+ */
 async function loadRelatedEntities(ids: number[]): Promise<Entity[]> {
   if (!ids || ids.length === 0) return [];
   
@@ -76,12 +121,19 @@ async function loadRelatedEntities(ids: number[]): Promise<Entity[]> {
   return entities;
 }
 
-// Страница рендерится динамически
+/** Страница рендерится динамически на каждом запросе */
 export const dynamic = "force-dynamic";
 
+/**
+ * Главный компонент страницы бога
+ * 
+ * @param params — Параметры маршрута (culture, slug)
+ * @returns JSX страницы бога
+ */
 export default async function GodPage({ params }: GodPageProps) {
   const { culture: cultureSlug, slug } = await params;
 
+  // Проверяем существование культуры
   try {
     await getCultureBySlug(cultureSlug);
   } catch (error) {
@@ -89,10 +141,9 @@ export default async function GodPage({ params }: GodPageProps) {
     notFound();
   }
 
-  // Сначала получаем ID сущности по slug
+  // Получаем ID сущности по slug (фильтрация на клиенте т.к. filter не работает)
   let entityId: number | null = null;
   try {
-    // Загружаем все сущности и фильтруем по slug
     const response = await fetch(`${API_BASE_URL}/items/entities?fields=id,slug`);
     if (response.ok) {
       const data = await response.json();
@@ -125,30 +176,31 @@ export default async function GodPage({ params }: GodPageProps) {
     notFound();
   }
 
-  // Загружаем мифы, где участвует этот бог
+  // Загружаем мифы с этим богом
   const myths = await loadMythsByGodId(entityId);
 
-  // Извлекаем ID родителей и браков из relations
+  // Извлекаем ID родителей и браков из M2M relations
   const parentIds = god.parents?.map((p: any) => p.related_entities_id).filter(Boolean) || [];
   const marriageIds = god.marriages?.map((m: any) => m.related_entities_id).filter(Boolean) || [];
 
-  // Загружаем родителей и браки
+  // Загружаем объекты родителей и супругов
   const [parents, marriages] = await Promise.all([
     loadRelatedEntities(parentIds),
     loadRelatedEntities(marriageIds),
   ]);
 
-  // URL изображения (main_image может быть UUID или ID)
+  // URL основного изображения
   const mainImageUrl = god.main_image 
     ? `${API_BASE_URL}/assets/${god.main_image}` 
     : null;
 
-  // Галерея - извлекаем directus_files_id из relations
+  // Массив URL изображений галереи (directus_files_id из M2M)
   const galleryFileIds = god.gallery?.map((g: any) => g.directus_files_id).filter(Boolean) || [];
   const galleryImages = galleryFileIds.map((id: string) => `${API_BASE_URL}/assets/${id}`);
 
   return (
     <main className="container mx-auto px-4 py-8">
+      {/* Хлебные крошки */}
       <nav className="mb-4 text-sm">
         <Link href={`/${cultureSlug}`} className="text-blue-600 hover:underline">
           {cultureSlug}
@@ -162,8 +214,10 @@ export default async function GodPage({ params }: GodPageProps) {
       </nav>
 
       <article>
+        {/* Заголовок */}
         <h1 className="text-4xl font-bold mb-4">{god.title}</h1>
 
+        {/* Описание */}
         {god.excerpt && (
           <div className="text-xl text-gray-600 mb-6">
             {god.excerpt}
@@ -181,6 +235,7 @@ export default async function GodPage({ params }: GodPageProps) {
           </div>
         )}
 
+        {/* Характеристики */}
         <dl className="space-y-4">
           {god.belonging && (
             <div>
@@ -210,6 +265,7 @@ export default async function GodPage({ params }: GodPageProps) {
             </div>
           )}
 
+          {/* Родители */}
           {parents.length > 0 && (
             <div>
               <dt className="font-semibold">Родители:</dt>
@@ -230,6 +286,7 @@ export default async function GodPage({ params }: GodPageProps) {
             </div>
           )}
 
+          {/* Брачные союзы */}
           {marriages.length > 0 && (
             <div>
               <dt className="font-semibold">Брачные союзы:</dt>
@@ -251,7 +308,7 @@ export default async function GodPage({ params }: GodPageProps) {
           )}
         </dl>
 
-        {/* Мифы с участием этого бога */}
+        {/* Мифы с участием бога */}
         {myths.length > 0 && (
           <section className="mt-8">
             <h2 className="text-2xl font-semibold mb-4">Мифы с участием {god.title}</h2>
