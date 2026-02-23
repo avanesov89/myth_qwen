@@ -60,17 +60,10 @@ export default async function HeroPage({ params }: HeroPageProps) {
         <h1 className="text-4xl font-bold mb-4">{hero.title}</h1>
         
         {hero.excerpt && (
-          <p className="text-xl text-gray-600 mb-6">{hero.excerpt}</p>
+          <div className="text-xl text-gray-600 mb-6">
+            {hero.excerpt}
+          </div>
         )}
-
-        <div className="prose max-w-none">
-          {hero.description && (
-            <div 
-              className="mb-8"
-              dangerouslySetInnerHTML={{ __html: hero.description }} 
-            />
-          )}
-        </div>
 
         {hero.gender && (
           <div className="mb-4">

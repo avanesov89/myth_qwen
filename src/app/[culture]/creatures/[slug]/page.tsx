@@ -60,17 +60,10 @@ export default async function CreaturePage({ params }: CreaturePageProps) {
         <h1 className="text-4xl font-bold mb-4">{creature.title}</h1>
         
         {creature.excerpt && (
-          <p className="text-xl text-gray-600 mb-6">{creature.excerpt}</p>
+          <div className="text-xl text-gray-600 mb-6">
+            {creature.excerpt}
+          </div>
         )}
-
-        <div className="prose max-w-none">
-          {creature.description && (
-            <div 
-              className="mb-8"
-              dangerouslySetInnerHTML={{ __html: creature.description }} 
-            />
-          )}
-        </div>
 
         {creature.belonging && (
           <div className="mb-4">

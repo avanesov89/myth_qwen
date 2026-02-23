@@ -66,21 +66,8 @@ export default async function GodPage({ params }: GodPageProps) {
         <h1 className="text-4xl font-bold mb-4">{god.title}</h1>
         
         {god.excerpt && (
-          <p className="text-xl text-gray-600 mb-6">{god.excerpt}</p>
-        )}
-
-        <div className="prose max-w-none">
-          {god.description && (
-            <div 
-              className="mb-8"
-              dangerouslySetInnerHTML={{ __html: god.description }} 
-            />
-          )}
-        </div>
-
-        {god.gender && (
-          <div className="mb-4">
-            <strong>Пол:</strong> {god.gender === 'male' ? 'Мужской' : 'Женский'}
+          <div className="text-xl text-gray-600 mb-6">
+            {god.excerpt}
           </div>
         )}
 
@@ -90,15 +77,21 @@ export default async function GodPage({ params }: GodPageProps) {
           </div>
         )}
 
-        {god.first_mention && (
+        {god.gender && (
           <div className="mb-4">
-            <strong>Первое упоминание:</strong> {god.first_mention}
+            <strong>Пол:</strong> {god.gender === 'male' ? 'Мужской' : 'Женский'}
           </div>
         )}
 
         {god.transcript && (
           <div className="mb-4">
             <strong>Транскрипция:</strong> {god.transcript}
+          </div>
+        )}
+
+        {god.first_mention && (
+          <div className="mb-4">
+            <strong>Первое упоминание:</strong> {god.first_mention}
           </div>
         )}
       </article>
