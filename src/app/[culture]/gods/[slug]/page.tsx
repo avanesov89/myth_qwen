@@ -8,6 +8,8 @@ interface GodPageProps {
   params: Promise<{ culture: string; slug: string }>;
 }
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8055';
+
 // Генерируем пути на основе данных из API
 export async function generateStaticParams() {
   const cultures = ["greek", "egypt", "scandinavian"];
@@ -35,13 +37,15 @@ async function loadRelatedEntities(ids: number[]): Promise<Entity[]> {
   const entities: Entity[] = [];
   for (const id of ids) {
     try {
-      const response = await fetch(`http://localhost:8055/items/entities/${id}`);
+      const response = await fetch(`${API_BASE_URL}/items/entities/${id}`);
       if (response.ok) {
         const data = await response.json();
-        entities.push(data.data);
+        if (data.data) {
+          entities.push(data.data);
+        }
       }
     } catch (error) {
-      console.error(`Failed to load entity ${id}:`, error);
+      console.warn(`Entity ${id} not found or inaccessible:`, error);
     }
   }
   return entities;
@@ -53,8 +57,6 @@ export const dynamic = "force-dynamic";
 export default async function GodPage({ params }: GodPageProps) {
   const { culture: cultureSlug, slug } = await params;
 
-  console.log("Rendering god page:", { cultureSlug, slug });
-
   try {
     await getCultureBySlug(cultureSlug);
   } catch (error) {
@@ -65,7 +67,6 @@ export default async function GodPage({ params }: GodPageProps) {
   let god: Entity;
   try {
     god = await getEntityBySlug(slug);
-    console.log("Loaded entity:", JSON.stringify(god, null, 2));
   } catch (error) {
     console.error("Entity not found:", slug);
     notFound();
@@ -76,6 +77,14 @@ export default async function GodPage({ params }: GodPageProps) {
     loadRelatedEntities(god.parents || []),
     loadRelatedEntities(god.marriages || []),
   ]);
+
+  // URL изображения
+  const mainImageUrl = god.main_image 
+    ? `${API_BASE_URL}/assets/${god.main_image}` 
+    : null;
+
+  // Галерея
+  const galleryImages = god.gallery?.map((id) => `${API_BASE_URL}/assets/${id}`) || [];
 
   return (
     <main className="container mx-auto px-4 py-8">
@@ -97,6 +106,17 @@ export default async function GodPage({ params }: GodPageProps) {
         {god.excerpt && (
           <div className="text-xl text-gray-600 mb-6">
             {god.excerpt}
+          </div>
+        )}
+
+        {/* Основное изображение */}
+        {mainImageUrl && (
+          <div className="mb-6">
+            <img 
+              src={mainImageUrl} 
+              alt={god.title}
+              className="w-full max-w-2xl h-auto rounded-lg shadow-lg"
+            />
           </div>
         )}
 
@@ -169,6 +189,23 @@ export default async function GodPage({ params }: GodPageProps) {
             </div>
           )}
         </dl>
+
+        {/* Галерея */}
+        {galleryImages.length > 0 && (
+          <section className="mt-8">
+            <h2 className="text-2xl font-semibold mb-4">Галерея</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {galleryImages.map((imgUrl, index) => (
+                <img
+                  key={index}
+                  src={imgUrl}
+                  alt={`${god.title} - изображение ${index + 1}`}
+                  className="w-full h-48 object-cover rounded-lg"
+                />
+              ))}
+            </div>
+          </section>
+        )}
       </article>
     </main>
   );
