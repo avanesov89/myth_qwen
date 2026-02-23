@@ -33,17 +33,21 @@ export async function generateStaticParams() {
 // Загрузка мифов, где участвует бог
 async function loadMythsByGodId(godId: number): Promise<any[]> {
   try {
-    // Загружаем все мифы с полями gods
+    // Загружаем все мифы с полями gods (M2M relation)
     const response = await fetch(
-      `${API_BASE_URL}/items/myths_and_legends?fields=id,title,slug,prev_text,culture,gods`
+      `${API_BASE_URL}/items/myths_and_legends?fields=id,title,slug,prev_text,culture,gods.entities_id`
     );
     if (response.ok) {
       const data = await response.json();
       const allMyths = data.data || [];
-      // Фильтруем мифы, где gods содержит godId
-      return allMyths.filter((myth: any) => 
-        Array.isArray(myth.gods) && myth.gods.includes(godId)
+      console.log("All myths:", allMyths);
+      console.log("Filtering for godId:", godId);
+      // Фильтруем мифы, где gods содержит entities_id = godId
+      const filtered = allMyths.filter((myth: any) => 
+        Array.isArray(myth.gods) && myth.gods.some((g: any) => g.entities_id === godId)
       );
+      console.log("Filtered myths:", filtered);
+      return filtered;
     }
   } catch (error) {
     console.warn(`Failed to load myths for god ${godId}:`, error);
@@ -255,7 +259,7 @@ export default async function GodPage({ params }: GodPageProps) {
               {myths.map((myth) => (
                 <Link
                   key={myth.id}
-                  href={`/${cultureSlug}/myths/${myth.slug}`}
+                  href={`/${myth.culture?.slug || cultureSlug}/myths/${myth.slug}`}
                   className="block p-6 border rounded-lg hover:shadow-lg transition-shadow"
                 >
                   <h3 className="text-xl font-semibold mb-2">{myth.title}</h3>
