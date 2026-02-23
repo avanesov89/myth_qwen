@@ -30,6 +30,22 @@ export async function generateStaticParams() {
   return allGods;
 }
 
+// Загрузка мифов, где участвует бог
+async function loadMythsByGodId(godId: number): Promise<any[]> {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/items/myths_and_legends?filter[gods][_contains]=${godId}&fields=id,title,slug,prev_text`
+    );
+    if (response.ok) {
+      const data = await response.json();
+      return data.data || [];
+    }
+  } catch (error) {
+    console.warn(`Failed to load myths for god ${godId}:`, error);
+  }
+  return [];
+}
+
 // Загрузка связанных сущностей по ID (для parents/marriages)
 async function loadRelatedEntities(ids: number[]): Promise<Entity[]> {
   if (!ids || ids.length === 0) return [];
@@ -97,6 +113,9 @@ export default async function GodPage({ params }: GodPageProps) {
     console.error("Entity not found:", slug);
     notFound();
   }
+
+  // Загружаем мифы, где участвует этот бог
+  const myths = await loadMythsByGodId(entityId);
 
   // Извлекаем ID родителей и браков из relations
   const parentIds = god.parents?.map((p: any) => p.related_entities_id).filter(Boolean) || [];
@@ -220,6 +239,29 @@ export default async function GodPage({ params }: GodPageProps) {
             </div>
           )}
         </dl>
+
+        {/* Мифы с участием этого бога */}
+        {myths.length > 0 && (
+          <section className="mt-8">
+            <h2 className="text-2xl font-semibold mb-4">Мифы с участием {god.title}</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {myths.map((myth) => (
+                <Link
+                  key={myth.id}
+                  href={`/${cultureSlug}/myths/${myth.slug}`}
+                  className="block p-6 border rounded-lg hover:shadow-lg transition-shadow"
+                >
+                  <h3 className="text-xl font-semibold mb-2">{myth.title}</h3>
+                  {myth.prev_text && (
+                    <p className="text-gray-600 text-sm">
+                      {myth.prev_text.slice(0, 150)}...
+                    </p>
+                  )}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Галерея */}
         {galleryImages.length > 0 && (
